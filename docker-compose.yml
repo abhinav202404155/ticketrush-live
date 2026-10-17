@@ -1,0 +1,67 @@
+# TicketRush Part 1: database, queue, 3 APIs, worker.
+x-app-env: &app-env
+  DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+  RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/
+  JWT_SECRET: ${JWT_SECRET}
+  ADMIN_KEY: ${ADMIN_KEY}
+  AUTH_RATE_LIMIT: ${AUTH_RATE_LIMIT}
+  BOOKING_RATE_LIMIT: ${BOOKING_RATE_LIMIT}
+  HOLD_SECONDS: ${HOLD_SECONDS}
+  WORK_DELAY_MS: ${WORK_DELAY_MS}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./db/init.sql:/docker-entrypoint-initdb.d/init.sql:ro   # runs only on first start
+    ports: ["5432:5432"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
+      interval: 3s
+      retries: 20
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
+    ports: ["5672:5672", "15672:15672"]   # 15672 = web UI
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      retries: 20
+
+  user-service:
+    build: ./services/user-service
+    environment: *app-env
+    ports: ["8001:8000"]
+    depends_on: { postgres: { condition: service_healthy } }
+
+  catalog-service:
+    build: ./services/catalog-service
+    environment: *app-env
+    ports: ["8002:8000"]
+    depends_on: { postgres: { condition: service_healthy } }
+
+  booking-service:
+    build: ./services/booking-service
+    environment: *app-env
+    ports: ["8003:8000"]
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+
+  booking-worker:
+    build: ./worker
+    environment: *app-env
+    depends_on:
+      postgres: { condition: service_healthy }
+      rabbitmq: { condition: service_healthy }
+
+volumes:
+  pgdata:
