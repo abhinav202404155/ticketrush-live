@@ -1,12 +1,12 @@
 {
   "rewrites": [
-    { "source": "/api/users/:path*",    "destination": "https://USER-SERVICE-URL.onrender.com/api/users/:path*" },
-    { "source": "/api/shows/:path*",    "destination": "https://CATALOG-SERVICE-URL.onrender.com/api/shows/:path*" },
-    { "source": "/api/events/:path*",   "destination": "https://CATALOG-SERVICE-URL.onrender.com/api/events/:path*" },
-    { "source": "/api/events",          "destination": "https://CATALOG-SERVICE-URL.onrender.com/api/events" },
-    { "source": "/api/cities",          "destination": "https://CATALOG-SERVICE-URL.onrender.com/api/cities" },
-    { "source": "/api/bookings/:path*", "destination": "https://BOOKING-SERVICE-URL.onrender.com/api/bookings/:path*" },
-    { "source": "/api/bookings",        "destination": "https://BOOKING-SERVICE-URL.onrender.com/api/bookings" },
-    { "source": "/api/admin/:path*",    "destination": "https://BOOKING-SERVICE-URL.onrender.com/api/admin/:path*" }
+    { "source": "/api/users/:path*",    "destination": "https://ticketrush-user.onrender.com/api/users/:path*" },
+    { "source": "/api/shows/:path*",    "destination": "https://ticketrush-catalog.onrender.com/api/shows/:path*" },
+    { "source": "/api/events/:path*",   "destination": "https://ticketrush-catalog.onrender.com/api/events/:path*" },
+    { "source": "/api/events",          "destination": "https://ticketrush-catalog.onrender.com/api/events" },
+    { "source": "/api/cities",          "destination": "https://ticketrush-catalog.onrender.com/api/cities" },
+    { "source": "/api/bookings/:path*", "destination": "https://ticketrush-booking.onrender.com/api/bookings/:path*" },
+    { "source": "/api/bookings",        "destination": "https://ticketrush-booking.onrender.com/api/bookings" },
+    { "source": "/api/admin/:path*",    "destination": "https://ticketrush-booking.onrender.com/api/admin/:path*" }
   ]
 }
