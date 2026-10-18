@@ -1,0 +1,14 @@
+# PUBLIC-site settings. Same name as the Part 3 ConfigMap, so applying this replaces it.
+# Rate limits are LOW here (per client IP, per pod). For load tests, re-apply k8s/10-config.yaml instead.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ticketrush-config
+  namespace: ticketrush
+data:
+  HOLD_SECONDS: "300"
+  WORK_DELAY_MS: "300"            # fake work per booking, keeps the queue visible in demos. Set "0" for real speed.
+  AUTH_RATE_LIMIT: "30/minute"
+  BOOKING_RATE_LIMIT: "60/minute"
+  DB_POOL_MAX: "10"
+  PROMETHEUS_URL: "http://prometheus:9090"

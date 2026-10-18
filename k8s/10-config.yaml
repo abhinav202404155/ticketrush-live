@@ -1,0 +1,13 @@
+# Non-secret settings. Passwords live in the Secret "ticketrush-secrets" (made by create-secrets.ps1), never here.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: ticketrush-config
+  namespace: ticketrush
+data:
+  HOLD_SECONDS: "300"          # seat hold = 5 minutes
+  WORK_DELAY_MS: "300"         # fake work per booking, so queue + scaling are visible in demos
+  AUTH_RATE_LIMIT: "100000/minute"   # very high ONLY for load tests (one IP via port-forward). Lower it on a public site
+  BOOKING_RATE_LIMIT: "100000/minute"
+  DB_POOL_MAX: "10"
+  PROMETHEUS_URL: "http://prometheus:9090"   # booking-service asks Prometheus how many pods run (Control Room)

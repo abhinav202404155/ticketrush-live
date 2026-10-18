@@ -1,0 +1,16 @@
+# Ingress = the front door. All web traffic goes to the frontend, whose nginx forwards /api/... to the right service.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: ticketrush
+  namespace: ticketrush
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: frontend
+                port: {number: 80}

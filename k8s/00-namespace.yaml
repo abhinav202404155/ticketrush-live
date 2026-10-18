@@ -1,0 +1,5 @@
+# A namespace is a folder inside the cluster. Everything of ours lives in "ticketrush".
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: ticketrush

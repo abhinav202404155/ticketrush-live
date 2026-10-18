@@ -1,4 +1,4 @@
-# TicketRush Part 1: database, queue, 3 APIs, worker.
+# TicketRush Parts 1-2: database, queue, 3 APIs, worker, frontend.
 x-app-env: &app-env
   DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
   RABBITMQ_URL: amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/
@@ -62,6 +62,11 @@ services:
     depends_on:
       postgres: { condition: service_healthy }
       rabbitmq: { condition: service_healthy }
+
+  frontend:
+    build: ./frontend
+    ports: ["3000:80"]
+    depends_on: [user-service, catalog-service, booking-service]
 
 volumes:
   pgdata:

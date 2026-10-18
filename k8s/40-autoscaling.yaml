@@ -1,0 +1,91 @@
+# HPA scales the 3 APIs on CPU. KEDA scales the worker on QUEUE LENGTH (CPU is the wrong signal for a queue worker).
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: user-service
+  namespace: ticketrush
+spec:
+  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: user-service}
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: {type: Utilization, averageUtilization: 60}   # add pods when average CPU > 60% of the request
+  behavior:
+    scaleDown: {stabilizationWindowSeconds: 60}                # wait 60s before removing pods
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: catalog-service
+  namespace: ticketrush
+spec:
+  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: catalog-service}
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: {type: Utilization, averageUtilization: 60}   # add pods when average CPU > 60% of the request
+  behavior:
+    scaleDown: {stabilizationWindowSeconds: 60}                # wait 60s before removing pods
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: booking-service
+  namespace: ticketrush
+spec:
+  scaleTargetRef: {apiVersion: apps/v1, kind: Deployment, name: booking-service}
+  minReplicas: 1
+  maxReplicas: 5
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: {type: Utilization, averageUtilization: 60}   # add pods when average CPU > 60% of the request
+  behavior:
+    scaleDown: {stabilizationWindowSeconds: 60}                # wait 60s before removing pods
+---
+# KEDA needs to log in to RabbitMQ to read the queue length. It reads the URL from our Secret.
+apiVersion: keda.sh/v1alpha1
+kind: TriggerAuthentication
+metadata:
+  name: rabbitmq-auth
+  namespace: ticketrush
+spec:
+  secretTargetRef:
+    - parameter: host
+      name: ticketrush-secrets
+      key: RABBITMQ_URL
+---
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: booking-worker
+  namespace: ticketrush
+spec:
+  scaleTargetRef:
+    name: booking-worker
+  minReplicaCount: 1
+  maxReplicaCount: 10
+  pollingInterval: 5            # check the queue every 5 seconds
+  cooldownPeriod: 30
+  advanced:
+    horizontalPodAutoscalerConfig:
+      behavior:
+        scaleDown:
+          stabilizationWindowSeconds: 30     # scale back down quickly after the rush (demo-friendly)
+  triggers:
+    - type: rabbitmq
+      metadata:
+        protocol: amqp
+        queueName: booking_requests
+        mode: QueueLength
+        value: "10"              # about 1 worker per 10 waiting bookings
+      authenticationRef:
+        name: rabbitmq-auth

@@ -1,0 +1,227 @@
+# Deployment = "keep N copies of this container running". Each has a Service for a stable address.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  namespace: ticketrush
+  labels: {app: user-service}
+spec:
+  replicas: 1               # autoscalers change this number
+  selector:
+    matchLabels: {app: user-service}
+  template:
+    metadata:
+      labels: {app: user-service}
+      annotations:
+        prometheus.io/scrape: "true"      # Prometheus (Part 4) finds metrics through these 3 lines
+        prometheus.io/port: "8000"
+        prometheus.io/path: /metrics
+    spec:
+      containers:
+        - name: user-service
+          image: ticketrush/user-service:dev
+          imagePullPolicy: IfNotPresent    # we build images inside Minikube, no registry needed
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef: {name: ticketrush-config}
+            - secretRef: {name: ticketrush-secrets}
+          readinessProbe:            # "is it ready to get traffic?" (if not, Service skips this pod)
+            httpGet: {path: /healthz, port: 8000}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:             # "is it stuck?" (if yes, Kubernetes restarts it = self-healing)
+            httpGet: {path: /healthz, port: 8000}
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:             # autoscaling needs "requests" to calculate CPU percent
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: ticketrush
+spec:
+  selector: {app: user-service}
+  ports:
+    - {port: 8000, targetPort: 8000}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: catalog-service
+  namespace: ticketrush
+  labels: {app: catalog-service}
+spec:
+  replicas: 1               # autoscalers change this number
+  selector:
+    matchLabels: {app: catalog-service}
+  template:
+    metadata:
+      labels: {app: catalog-service}
+      annotations:
+        prometheus.io/scrape: "true"      # Prometheus (Part 4) finds metrics through these 3 lines
+        prometheus.io/port: "8000"
+        prometheus.io/path: /metrics
+    spec:
+      containers:
+        - name: catalog-service
+          image: ticketrush/catalog-service:dev
+          imagePullPolicy: IfNotPresent    # we build images inside Minikube, no registry needed
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef: {name: ticketrush-config}
+            - secretRef: {name: ticketrush-secrets}
+          readinessProbe:            # "is it ready to get traffic?" (if not, Service skips this pod)
+            httpGet: {path: /healthz, port: 8000}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:             # "is it stuck?" (if yes, Kubernetes restarts it = self-healing)
+            httpGet: {path: /healthz, port: 8000}
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:             # autoscaling needs "requests" to calculate CPU percent
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: catalog-service
+  namespace: ticketrush
+spec:
+  selector: {app: catalog-service}
+  ports:
+    - {port: 8000, targetPort: 8000}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: booking-service
+  namespace: ticketrush
+  labels: {app: booking-service}
+spec:
+  replicas: 1               # autoscalers change this number
+  selector:
+    matchLabels: {app: booking-service}
+  template:
+    metadata:
+      labels: {app: booking-service}
+      annotations:
+        prometheus.io/scrape: "true"      # Prometheus (Part 4) finds metrics through these 3 lines
+        prometheus.io/port: "8000"
+        prometheus.io/path: /metrics
+    spec:
+      containers:
+        - name: booking-service
+          image: ticketrush/booking-service:dev
+          imagePullPolicy: IfNotPresent    # we build images inside Minikube, no registry needed
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef: {name: ticketrush-config}
+            - secretRef: {name: ticketrush-secrets}
+          readinessProbe:            # "is it ready to get traffic?" (if not, Service skips this pod)
+            httpGet: {path: /healthz, port: 8000}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:             # "is it stuck?" (if yes, Kubernetes restarts it = self-healing)
+            httpGet: {path: /healthz, port: 8000}
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:             # autoscaling needs "requests" to calculate CPU percent
+            requests: {cpu: 100m, memory: 128Mi}
+            limits: {cpu: 500m, memory: 256Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: booking-service
+  namespace: ticketrush
+spec:
+  selector: {app: booking-service}
+  ports:
+    - {port: 8000, targetPort: 8000}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: booking-worker
+  namespace: ticketrush
+  labels: {app: booking-worker}
+spec:
+  replicas: 1               # autoscalers change this number
+  selector:
+    matchLabels: {app: booking-worker}
+  template:
+    metadata:
+      labels: {app: booking-worker}
+      annotations:
+        prometheus.io/scrape: "true"      # Prometheus (Part 4) finds metrics through these 3 lines
+        prometheus.io/port: "8000"
+        prometheus.io/path: /metrics
+    spec:
+      containers:
+        - name: booking-worker
+          image: ticketrush/booking-worker:dev
+          imagePullPolicy: IfNotPresent    # we build images inside Minikube, no registry needed
+          ports:
+            - containerPort: 8000
+          envFrom:
+            - configMapRef: {name: ticketrush-config}
+            - secretRef: {name: ticketrush-secrets}
+          readinessProbe:
+            tcpSocket: {port: 8000}
+            initialDelaySeconds: 5
+            periodSeconds: 5
+          livenessProbe:
+            tcpSocket: {port: 8000}
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:             # autoscaling needs "requests" to calculate CPU percent
+            requests: {cpu: 50m, memory: 64Mi}
+            limits: {cpu: 250m, memory: 128Mi}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: ticketrush
+  labels: {app: frontend}
+spec:
+  replicas: 1               # autoscalers change this number
+  selector:
+    matchLabels: {app: frontend}
+  template:
+    metadata:
+      labels: {app: frontend}
+    spec:
+      containers:
+        - name: frontend
+          image: ticketrush/frontend:dev
+          imagePullPolicy: IfNotPresent    # we build images inside Minikube, no registry needed
+          ports:
+            - containerPort: 80
+          readinessProbe:
+            httpGet: {path: /, port: 80}
+            periodSeconds: 5
+          livenessProbe:
+            httpGet: {path: /, port: 80}
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:             # autoscaling needs "requests" to calculate CPU percent
+            requests: {cpu: 20m, memory: 32Mi}
+            limits: {cpu: 200m, memory: 64Mi}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: ticketrush
+spec:
+  selector: {app: frontend}
+  ports:
+    - {port: 80, targetPort: 80}

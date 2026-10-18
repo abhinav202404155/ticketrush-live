@@ -3,6 +3,8 @@ It does not touch seats itself; the worker does that (one at a time, safely).
 Flow: QUEUED -> (worker) HELD for 5 min -> (mock pay) CONFIRMED. Or FAILED / EXPIRED."""
 import json
 import os
+import urllib.parse
+import urllib.request
 from contextlib import asynccontextmanager
 
 import jwt
@@ -21,6 +23,7 @@ JWT_SECRET = os.environ["JWT_SECRET"]
 ADMIN_KEY = os.environ["ADMIN_KEY"]
 RABBIT_URL = os.environ["RABBITMQ_URL"]
 QUEUE = "booking_requests"
+PROM_URL = os.getenv("PROMETHEUS_URL", "")  # empty under docker-compose, set in Kubernetes
 BOOKING_LIMIT = os.getenv("BOOKING_RATE_LIMIT", "30/minute")
 
 limiter = Limiter(key_func=get_remote_address)
@@ -199,6 +202,19 @@ def pay(booking_id: int, body: PaymentIn, authorization: str = Header(default=""
         return booking_view(conn, b)
 
 
+def running_pods():
+    """How many pods of each service are up, from Prometheus. None if Prometheus is not available."""
+    if not PROM_URL:
+        return None
+    try:
+        q = urllib.parse.quote('count by (app) (up{job="ticketrush-apps"} == 1)')
+        with urllib.request.urlopen(f"{PROM_URL}/api/v1/query?query={q}", timeout=1.5) as r:
+            data = json.load(r)
+        return {x["metric"]["app"]: int(x["value"][1]) for x in data["data"]["result"]}
+    except Exception:
+        return None
+
+
 @app.get("/api/admin/stats")
 def admin_stats(x_admin_key: str = Header(default="")):
     """Numbers for the Control Room page."""
@@ -214,5 +230,6 @@ def admin_stats(x_admin_key: str = Header(default="")):
         "queue_length": counts.get("QUEUED", 0),
         "counts": counts,
         "seats_sold": sold,
+        "pods": running_pods(),
         "success_rate": round(accepted / processed * 100, 1) if processed else None,
     }

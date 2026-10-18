@@ -1,0 +1,13 @@
+# Pings your live site every 30 minutes. If it is down, the run fails and GitHub emails you.
+# Setup: repo Settings -> Secrets and variables -> Actions -> Variables -> add SITE_URL (example https://yourname.duckdns.org).
+# Not useful with a changing trycloudflare.com URL.
+name: uptime
+on:
+  schedule: [{ cron: "*/30 * * * *" }]
+  workflow_dispatch:
+jobs:
+  ping:
+    if: ${{ vars.SITE_URL != '' }}
+    runs-on: ubuntu-latest
+    steps:
+      - run: curl -fsS --max-time 20 "${{ vars.SITE_URL }}/api/cities" > /dev/null
