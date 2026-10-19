@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { api, session } from "./api";
+import Dashboard from "./dashboard/Dashboard";
 
 const CATS = ["All", "Movies", "Concerts", "Comedy", "Sports", "Theatre", "Workshops"];
 const TZ = { timeZone: "Asia/Kolkata" };
@@ -172,29 +173,6 @@ function Mine() {
     <div className="list">{rows.map((b) => (<div className="stub item" key={b.booking_id}><div><b>#{b.booking_id}</b> · Show {b.show_id}<p className="muted">{b.seats.join(", ")}</p></div><span className={`pill ${b.status}`}>{b.status}</span></div>))}</div></>);
 }
 
-function Control() {
-  const [key, setKey] = useState(localStorage.getItem("tr_admin") || "admin-demo-key"), [s, setS] = useState(null), [e, setE] = useState(""), [log, setLog] = useState([]), prev = useRef(null);
-  usePoll(() => api("/api/admin/stats", { headers: { "X-Admin-Key": key } }).then((d) => {
-    setS(d); setE(""); localStorage.setItem("tr_admin", key);
-    const w = d.pods?.["booking-worker"];   // log every change in worker count while this page is open
-    if (w != null) { if (prev.current != null && w !== prev.current) setLog((l) => [{ t: new Date().toLocaleTimeString("en-IN"), m: `Workers ${prev.current} → ${w}`, up: w > prev.current }, ...l].slice(0, 10)); prev.current = w; }
-  }).catch((x) => setE(x.message)), 2000, [key]);
-  const c = s?.counts || {}, total = Math.max(1, Object.values(c).reduce((a, b) => a + b, 0)), pods = s?.pods;
-  const apiPods = pods ? ["user-service", "catalog-service", "booking-service"].reduce((n, k) => n + (pods[k] || 0), 0) : null;
-  return (<><h2>Control Room <span className="live">● LIVE</span></h2>
-    <label className="muted small">Admin key </label><input className="inline" value={key} onChange={(x) => setKey(x.target.value)} />{e && <p className="err">{e}</p>}
-    <div className="tiles">
-      <div className="tile"><small>QUEUE LENGTH</small><b>{s ? s.queue_length : "–"}</b></div>
-      <div className="tile"><small>SUCCESS RATE</small><b>{s?.success_rate != null ? s.success_rate + "%" : "–"}</b></div>
-      <div className="tile"><small>SEATS SOLD</small><b>{s ? s.seats_sold : "–"}</b></div>
-      <div className="tile"><small>WORKER PODS</small><b>{pods ? pods["booking-worker"] ?? 0 : "n/a"}</b>{!pods && <span className="muted small">needs Kubernetes + Prometheus</span>}</div>
-      <div className="tile"><small>API PODS</small><b>{apiPods ?? "n/a"}</b></div>
-    </div>
-    <div className="bars">{["QUEUED", "HELD", "CONFIRMED", "FAILED", "EXPIRED"].map((k) => (<div key={k} className="bar"><span>{k}</span><div><i className={k} style={{ width: ((c[k] || 0) / total) * 100 + "%" }} /></div><b>{c[k] || 0}</b></div>))}</div>
-    <h3 className="evh">Scaling events <span className="muted small">(while this page is open)</span></h3>
-    <div className="evlog">{!log.length && <p className="muted small">No change yet. Start a load test and watch.</p>}{log.map((x, i) => <p key={i} className={x.up ? "up" : "down"}><b>{x.t}</b> {x.m}</p>)}</div></>);
-}
-
 function Auth({ onDone, onClose }) {
   const [mode, setMode] = useState("login"), [email, setEmail] = useState(""), [pw, setPw] = useState(""), [err, setErr] = useState("");
   const submit = async () => { setErr(""); try {
@@ -236,7 +214,7 @@ export default function App() {
       {r[0] === "event" && <EventPage id={Number(r[1])} city={city} go={go} />}
       {r[0] === "show" && <ShowPage id={Number(r[1])} user={user} needLogin={() => setAuth(true)} go={go} />}
       {r[0] === "mine" && gate(<Mine />)}
-      {r[0] === "control" && <Control />}
+      {r[0] === "control" && <Dashboard />}
     </main>
     <footer><b>Every seat. One owner.</b><br />Sample events are fictional · mock payments only · do not use real passwords</footer>
     {auth && <Auth onClose={() => setAuth(false)} onDone={() => { setUser(session.user()); setAuth(false); }} />}

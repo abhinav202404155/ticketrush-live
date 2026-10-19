@@ -1,6 +1,7 @@
 """booking-service: accepts booking REQUESTS and puts them in a queue.
 It does not touch seats itself; the worker does that (one at a time, safely).
 Flow: QUEUED -> (worker) HELD for 5 min -> (mock pay) CONFIRMED. Or FAILED / EXPIRED."""
+import hmac
 import json
 import os
 import urllib.parse
@@ -17,6 +18,7 @@ from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
 from slowapi.util import get_remote_address
 
+from . import observability
 from .db import pool
 
 JWT_SECRET = os.environ["JWT_SECRET"]
@@ -25,6 +27,9 @@ RABBIT_URL = os.environ["RABBITMQ_URL"]
 QUEUE = "booking_requests"
 PROM_URL = os.getenv("PROMETHEUS_URL", "")  # empty under docker-compose, set in Kubernetes
 BOOKING_LIMIT = os.getenv("BOOKING_RATE_LIMIT", "30/minute")
+DASHBOARD_LIMIT = os.getenv("DASHBOARD_RATE_LIMIT", "120/minute")
+# "true" = the dashboard needs no key. It exposes only aggregate numbers (no emails, no booking details).
+DASHBOARD_PUBLIC = os.getenv("DASHBOARD_PUBLIC", "false").lower() == "true"
 
 limiter = Limiter(key_func=get_remote_address)
 
@@ -202,6 +207,12 @@ def pay(booking_id: int, body: PaymentIn, authorization: str = Header(default=""
         return booking_view(conn, b)
 
 
+def require_admin(key: str) -> None:
+    """Constant-time comparison, so response timing cannot be used to guess the key."""
+    if not hmac.compare_digest(key.encode(), ADMIN_KEY.encode()):
+        raise HTTPException(status_code=401, detail="Bad admin key")
+
+
 def running_pods():
     """How many pods of each service are up, from Prometheus. None if Prometheus is not available."""
     if not PROM_URL:
@@ -218,8 +229,7 @@ def running_pods():
 @app.get("/api/admin/stats")
 def admin_stats(x_admin_key: str = Header(default="")):
     """Numbers for the Control Room page."""
-    if x_admin_key != ADMIN_KEY:
-        raise HTTPException(status_code=401, detail="Bad admin key")
+    require_admin(x_admin_key)
     with pool.connection() as conn:
         rows = conn.execute("SELECT status, COUNT(*) AS n FROM bookings GROUP BY status").fetchall()
         sold = conn.execute("SELECT COUNT(*) AS n FROM seats WHERE status = 'SOLD'").fetchone()["n"]
@@ -233,3 +243,12 @@ def admin_stats(x_admin_key: str = Header(default="")):
         "pods": running_pods(),
         "success_rate": round(accepted / processed * 100, 1) if processed else None,
     }
+
+
+@app.get("/api/admin/overview")
+@limiter.limit(DASHBOARD_LIMIT)
+def admin_overview(request: Request, window: int = 30, x_admin_key: str = Header(default="")):
+    """Everything the Control Room dashboard shows, in one response (see observability.py)."""
+    if not DASHBOARD_PUBLIC:
+        require_admin(x_admin_key)
+    return observability.build_overview(pool, RABBIT_URL, window)

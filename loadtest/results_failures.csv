@@ -1,0 +1,6 @@
+Method,Name,Error,Occurrences,First Seen,Last Seen
+POST,signup,HTTPError('504 Server Error: Gateway Time-out for url: signup'),52,2026-10-19T10:53:21Z,2026-10-19T10:53:27Z
+POST,login,HTTPError('504 Server Error: Gateway Time-out for url: login'),15,2026-10-19T10:53:21Z,2026-10-19T10:53:38Z
+POST,login,HTTPError('401 Client Error: Unauthorized for url: login'),137,2026-10-19T10:53:15Z,2026-10-19T10:53:27Z
+POST,login,HTTPError('502 Server Error: Bad Gateway for url: login'),44,2026-10-19T10:52:26Z,2026-10-19T10:53:35Z
+POST,signup,HTTPError('502 Server Error: Bad Gateway for url: signup'),119,2026-10-19T10:52:21Z,2026-10-19T10:53:08Z
